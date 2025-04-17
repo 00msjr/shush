@@ -1,6 +1,6 @@
-# Shush
+# Shush 🥷
 
-A powerful utility for suppressing and managing output from commands and scripts in Linux and macOS systems. 🥷
+A powerful utility for suppressing and managing output from commands and scripts in Linux and macOS systems.
 
 ## Features
 
