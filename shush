@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
 # shush - A script to suppress outputs and messages from other commands and scripts
-# Author: Mikey
-# Version: 1.0.4
+# Version: 1.0.0
 
 # Text formatting
 BOLD="\033[1m"
@@ -63,11 +62,11 @@ error() {
 show_notification() {
   local title="$1"
   local message="$2"
-  
+
   if [[ "$(uname)" == "Darwin" ]]; then
     # macOS notification
     osascript -e "display notification \"$message\" with title \"$title\"" &>/dev/null
-  elif command -v notify-send &> /dev/null; then
+  elif command -v notify-send &>/dev/null; then
     # Linux notification with notify-send
     notify-send "$title" "$message"
   fi
@@ -78,8 +77,8 @@ show_spinner() {
   local pid=$1
   local delay=0.1
   local spinstr='|/-\'
-  
-  while ps -p $pid > /dev/null; do
+
+  while ps -p $pid >/dev/null; do
     local temp=${spinstr#?}
     printf " [%c]  " "$spinstr"
     local spinstr=$temp${spinstr%"$temp"}
@@ -92,77 +91,77 @@ show_spinner() {
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -o|--stdout-only)
-      SUPPRESS_STDOUT=true
-      SUPPRESS_STDERR=false
-      shift
-      ;;
-    -e|--stderr-only)
-      SUPPRESS_STDOUT=false
-      SUPPRESS_STDERR=true
-      shift
-      ;;
-    -l|--log)
-      if [[ -z "$2" || "$2" == -* ]]; then
-        error "Option -l/--log requires a filename argument"
-      fi
-      LOG_FILE="$2"
-      shift 2
-      ;;
-    -v|--verbose)
-      VERBOSE=true
-      shift
-      ;;
-    -n|--notify)
-      NOTIFY_ON_COMPLETE=true
-      shift
-      ;;
-    -N|--notify-error)
-      NOTIFY_ON_ERROR=true
-      shift
-      ;;
-    -t|--timeout)
-      if [[ -z "$2" || "$2" == -* ]]; then
-        error "Option -t/--timeout requires a numeric argument"
-      fi
-      TIMEOUT="$2"
-      shift 2
-      ;;
-    -r|--return-only)
-      RETURN_CODE_ONLY=true
-      shift
-      ;;
-    -q|--quiet)
-      QUIET=true
-      RETURN_CODE_ONLY=true
-      shift
-      ;;
-    -i|--ignore-exit)
-      IGNORE_EXIT_CODE=true
-      shift
-      ;;
-    -s|--summary)
-      SUMMARY=true
-      shift
-      ;;
-    -h|--help)
-      usage
-      ;;
-    --)
-      shift
-      COMMAND="$@"
-      break
-      ;;
-    *)
-      echo -e "${RED}Unknown option: $1${RESET}"
-      usage
-      ;;
+  -o | --stdout-only)
+    SUPPRESS_STDOUT=true
+    SUPPRESS_STDERR=false
+    shift
+    ;;
+  -e | --stderr-only)
+    SUPPRESS_STDOUT=false
+    SUPPRESS_STDERR=true
+    shift
+    ;;
+  -l | --log)
+    if [[ -z "$2" || "$2" == -* ]]; then
+      error "Option -l/--log requires a filename argument"
+    fi
+    LOG_FILE="$2"
+    shift 2
+    ;;
+  -v | --verbose)
+    VERBOSE=true
+    shift
+    ;;
+  -n | --notify)
+    NOTIFY_ON_COMPLETE=true
+    shift
+    ;;
+  -N | --notify-error)
+    NOTIFY_ON_ERROR=true
+    shift
+    ;;
+  -t | --timeout)
+    if [[ -z "$2" || "$2" == -* ]]; then
+      error "Option -t/--timeout requires a numeric argument"
+    fi
+    TIMEOUT="$2"
+    shift 2
+    ;;
+  -r | --return-only)
+    RETURN_CODE_ONLY=true
+    shift
+    ;;
+  -q | --quiet)
+    QUIET=true
+    RETURN_CODE_ONLY=true
+    shift
+    ;;
+  -i | --ignore-exit)
+    IGNORE_EXIT_CODE=true
+    shift
+    ;;
+  -s | --summary)
+    SUMMARY=true
+    shift
+    ;;
+  -h | --help)
+    usage
+    ;;
+  --)
+    shift
+    COMMAND="$@"
+    break
+    ;;
+  *)
+    echo -e "${RED}Unknown option: $1${RESET}"
+    usage
+    ;;
   esac
 done
 
 # Check if a command was provided
 if [[ -z "$COMMAND" ]]; then
-  error "No command specified"
+  shush "No command specified, use command 'shush --help' for usage details"
 fi
 
 # Create temporary files for stdout and stderr
@@ -183,7 +182,7 @@ START_TIME=$(date +%s.%N)
 # Create a background process for the spinner if verbose mode is enabled
 if [[ "$VERBOSE" == true && "$QUIET" == false ]]; then
   echo -e "${BLUE}Running command:${RESET} $COMMAND"
-  
+
   # Execute the command with appropriate redirections
   if [[ -n "$TIMEOUT" ]]; then
     # With timeout
@@ -191,45 +190,45 @@ if [[ "$VERBOSE" == true && "$QUIET" == false ]]; then
       # macOS doesn't have timeout command by default, use perl
       if [[ "$SUPPRESS_STDOUT" == true && "$SUPPRESS_STDERR" == true ]]; then
         # Suppress both
-        perl -e "alarm($TIMEOUT); exec @ARGV" $COMMAND > "$STDOUT_TMP" 2> "$STDERR_TMP" &
+        perl -e "alarm($TIMEOUT); exec @ARGV" $COMMAND >"$STDOUT_TMP" 2>"$STDERR_TMP" &
       elif [[ "$SUPPRESS_STDOUT" == true ]]; then
         # Suppress only stdout
-        perl -e "alarm($TIMEOUT); exec @ARGV" $COMMAND > "$STDOUT_TMP" &
+        perl -e "alarm($TIMEOUT); exec @ARGV" $COMMAND >"$STDOUT_TMP" &
       elif [[ "$SUPPRESS_STDERR" == true ]]; then
         # Suppress only stderr
-        perl -e "alarm($TIMEOUT); exec @ARGV" $COMMAND 2> "$STDERR_TMP" &
+        perl -e "alarm($TIMEOUT); exec @ARGV" $COMMAND 2>"$STDERR_TMP" &
       fi
     else
       # Linux with timeout command
       if [[ "$SUPPRESS_STDOUT" == true && "$SUPPRESS_STDERR" == true ]]; then
         # Suppress both
-        timeout "$TIMEOUT" $COMMAND > "$STDOUT_TMP" 2> "$STDERR_TMP" &
+        timeout "$TIMEOUT" $COMMAND >"$STDOUT_TMP" 2>"$STDERR_TMP" &
       elif [[ "$SUPPRESS_STDOUT" == true ]]; then
         # Suppress only stdout
-        timeout "$TIMEOUT" $COMMAND > "$STDOUT_TMP" &
+        timeout "$TIMEOUT" $COMMAND >"$STDOUT_TMP" &
       elif [[ "$SUPPRESS_STDERR" == true ]]; then
         # Suppress only stderr
-        timeout "$TIMEOUT" $COMMAND 2> "$STDERR_TMP" &
+        timeout "$TIMEOUT" $COMMAND 2>"$STDERR_TMP" &
       fi
     fi
   else
     # Without timeout
     if [[ "$SUPPRESS_STDOUT" == true && "$SUPPRESS_STDERR" == true ]]; then
       # Suppress both
-      $COMMAND > "$STDOUT_TMP" 2> "$STDERR_TMP" &
+      $COMMAND >"$STDOUT_TMP" 2>"$STDERR_TMP" &
     elif [[ "$SUPPRESS_STDOUT" == true ]]; then
       # Suppress only stdout
-      $COMMAND > "$STDOUT_TMP" &
+      $COMMAND >"$STDOUT_TMP" &
     elif [[ "$SUPPRESS_STDERR" == true ]]; then
       # Suppress only stderr
-      $COMMAND 2> "$STDERR_TMP" &
+      $COMMAND 2>"$STDERR_TMP" &
     fi
   fi
-  
+
   # Get the process ID and show spinner
   CMD_PID=$!
   show_spinner $CMD_PID
-  
+
   # Wait for the command to complete
   wait $CMD_PID || true
   EXIT_CODE=$?
@@ -241,41 +240,41 @@ else
       # macOS doesn't have timeout command by default, use perl
       if [[ "$SUPPRESS_STDOUT" == true && "$SUPPRESS_STDERR" == true ]]; then
         # Suppress both
-        perl -e "alarm($TIMEOUT); exec @ARGV" $COMMAND > "$STDOUT_TMP" 2> "$STDERR_TMP"
+        perl -e "alarm($TIMEOUT); exec @ARGV" $COMMAND >"$STDOUT_TMP" 2>"$STDERR_TMP"
       elif [[ "$SUPPRESS_STDOUT" == true ]]; then
         # Suppress only stdout
-        perl -e "alarm($TIMEOUT); exec @ARGV" $COMMAND > "$STDOUT_TMP"
+        perl -e "alarm($TIMEOUT); exec @ARGV" $COMMAND >"$STDOUT_TMP"
       elif [[ "$SUPPRESS_STDERR" == true ]]; then
         # Suppress only stderr
-        perl -e "alarm($TIMEOUT); exec @ARGV" $COMMAND 2> "$STDERR_TMP"
+        perl -e "alarm($TIMEOUT); exec @ARGV" $COMMAND 2>"$STDERR_TMP"
       fi
     else
       # Linux with timeout command
       if [[ "$SUPPRESS_STDOUT" == true && "$SUPPRESS_STDERR" == true ]]; then
         # Suppress both
-        timeout "$TIMEOUT" $COMMAND > "$STDOUT_TMP" 2> "$STDERR_TMP"
+        timeout "$TIMEOUT" $COMMAND >"$STDOUT_TMP" 2>"$STDERR_TMP"
       elif [[ "$SUPPRESS_STDOUT" == true ]]; then
         # Suppress only stdout
-        timeout "$TIMEOUT" $COMMAND > "$STDOUT_TMP"
+        timeout "$TIMEOUT" $COMMAND >"$STDOUT_TMP"
       elif [[ "$SUPPRESS_STDERR" == true ]]; then
         # Suppress only stderr
-        timeout "$TIMEOUT" $COMMAND 2> "$STDERR_TMP"
+        timeout "$TIMEOUT" $COMMAND 2>"$STDERR_TMP"
       fi
     fi
   else
     # Without timeout
     if [[ "$SUPPRESS_STDOUT" == true && "$SUPPRESS_STDERR" == true ]]; then
       # Suppress both
-      $COMMAND > "$STDOUT_TMP" 2> "$STDERR_TMP"
+      $COMMAND >"$STDOUT_TMP" 2>"$STDERR_TMP"
     elif [[ "$SUPPRESS_STDOUT" == true ]]; then
       # Suppress only stdout
-      $COMMAND > "$STDOUT_TMP"
+      $COMMAND >"$STDOUT_TMP"
     elif [[ "$SUPPRESS_STDERR" == true ]]; then
       # Suppress only stderr
-      $COMMAND 2> "$STDERR_TMP"
+      $COMMAND 2>"$STDERR_TMP"
     fi
   fi
-  
+
   # Save the exit code
   EXIT_CODE=$?
 fi
@@ -299,7 +298,7 @@ if [[ -n "$LOG_FILE" ]]; then
     cat "$STDOUT_TMP"
     echo "--- STDERR ---"
     cat "$STDERR_TMP"
-  } > "$LOG_FILE"
+  } >"$LOG_FILE"
 fi
 
 # Show summary if requested
